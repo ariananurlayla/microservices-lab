@@ -40,19 +40,19 @@
     </button>
   </nav>
 
-  <main class="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 py-8 lg:grid-cols-5">
+  <main class="mx-auto grid max-w-6xl grid-cols-1 items-start gap-6 px-4 py-8 lg:grid-cols-5">
 
     <!-- Menu 1 / Menu 2 panels -->
-    <section class="space-y-6 lg:col-span-2">
+    <section class="lg:col-span-2">
 
       <form id="panel-square" class="card" onsubmit="handleSquare(event)">
         <h2 class="text-lg font-semibold text-cyan-300">Square Area</h2>
         <p class="mt-1 text-xs text-slate-500">POST { sisi } → Lambda luas-persegi</p>
 
         <label for="sisi" class="mt-4 block text-sm text-slate-300">Side length (sisi)</label>
-        <div class="mt-1.5 flex items-center gap-2">
+        <div class="mt-1.5 flex items-stretch gap-2">
           <input id="sisi" type="number" min="0" step="any" value="5" class="input-field" required />
-          <span class="shrink-0 rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-400">cm</span>
+          <span class="inline-flex shrink-0 items-center rounded-md border border-slate-700 bg-slate-950/60 px-3 text-sm text-slate-400">cm</span>
         </div>
 
         <button type="submit" class="btn-primary mt-4" id="btn-square">
@@ -68,9 +68,9 @@
         <p class="mt-1 text-xs text-slate-500">POST { rusuk } → Lambda luas-permukaan-kubus → luas-persegi</p>
 
         <label for="rusuk" class="mt-4 block text-sm text-slate-300">Edge length (rusuk)</label>
-        <div class="mt-1.5 flex items-center gap-2">
+        <div class="mt-1.5 flex items-stretch gap-2">
           <input id="rusuk" type="number" min="0" step="any" value="3" class="input-field" required />
-          <span class="shrink-0 rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-400">cm</span>
+          <span class="inline-flex shrink-0 items-center rounded-md border border-slate-700 bg-slate-950/60 px-3 text-sm text-slate-400">cm</span>
         </div>
 
         <button type="submit" class="btn-primary mt-4" id="btn-cube">
