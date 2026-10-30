@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lab 8 Kowan — Ariana dan Fikri</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <style type="text/tailwindcss">
+    .card        { @apply rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6 shadow-xl backdrop-blur; }
+    .btn-primary { @apply w-full rounded-lg bg-cyan-500 px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-60; }
+    .input-field { @apply w-full rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-slate-100 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30; }
+    .result-ok   { @apply rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 font-mono text-cyan-200; }
+    .result-err  { @apply rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 font-mono text-red-300; }
+  </style>
+</head>
+
+<body class="bg-slate-950 min-h-screen text-slate-100 antialiased">
+
+  <header class="px-4 pt-12 pb-6 text-center">
+    <h1 class="text-3xl font-bold tracking-tight text-slate-100 md:text-4xl">
+      Serverless Area Calculator
+    </h1>
+    <p class="mt-2 text-sm text-slate-400">
+      Ariana Nurlayla Syabandini (2206081950) &bull; Fikri Massaid Wahab (2206083395)
+    </p>
+  </header>
+
+  <nav class="flex justify-center gap-2 px-4">
+    <button id="tab-square" onclick="switchMenu('square')"
+      class="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-400 transition hover:text-slate-200">
+      Square Area
+    </button>
+    <button id="tab-cube" onclick="switchMenu('cube')"
+      class="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-400 transition hover:text-slate-200">
+      Cube Surface Area
+    </button>
+  </nav>
+
+  <main class="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 py-8 lg:grid-cols-5">
+
+    <!-- Menu 1 / Menu 2 panels -->
+    <section class="space-y-6 lg:col-span-2">
+
+      <form id="panel-square" class="card" onsubmit="handleSquare(event)">
+        <h2 class="text-lg font-semibold text-cyan-300">Square Area</h2>
+        <p class="mt-1 text-xs text-slate-500">POST { sisi } → Lambda luas-persegi</p>
+
+        <label for="sisi" class="mt-4 block text-sm text-slate-300">Side length (sisi)</label>
+        <div class="mt-1.5 flex items-center gap-2">
+          <input id="sisi" type="number" min="0" step="any" value="5" class="input-field" required />
+          <span class="shrink-0 rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-400">cm</span>
+        </div>
+
+        <button type="submit" class="btn-primary mt-4" id="btn-square">
+          <span id="spin-square" class="mr-2 hidden h-4 w-4 animate-spin rounded-full border-2 border-slate-950/30 border-t-slate-950 align-middle"></span>
+          <span id="label-square" data-idle="Calculate Area">Calculate Area</span>
+        </button>
+
+        <div id="result-square" class="mt-4 hidden"></div>
+      </form>
+
+      <form id="panel-cube" class="card hidden" onsubmit="handleCube(event)">
+        <h2 class="text-lg font-semibold text-cyan-300">Cube Surface Area</h2>
+        <p class="mt-1 text-xs text-slate-500">POST { rusuk } → Lambda luas-permukaan-kubus → luas-persegi</p>
+
+        <label for="rusuk" class="mt-4 block text-sm text-slate-300">Edge length (rusuk)</label>
+        <div class="mt-1.5 flex items-center gap-2">
+          <input id="rusuk" type="number" min="0" step="any" value="3" class="input-field" required />
+          <span class="shrink-0 rounded-md border border-slate-700 bg-slate-950/60 px-3 py-2.5 text-sm text-slate-400">cm</span>
+        </div>
+
+        <button type="submit" class="btn-primary mt-4" id="btn-cube">
+          <span id="spin-cube" class="mr-2 hidden h-4 w-4 animate-spin rounded-full border-2 border-slate-950/30 border-t-slate-950 align-middle"></span>
+          <span id="label-cube" data-idle="Calculate Surface Area">Calculate Surface Area</span>
+        </button>
+
+        <div id="result-cube" class="mt-4 hidden"></div>
+      </form>
+    </section>
+
+    <!-- Shared canvas: 2D square (Tab 1) / 3D cube (Tab 2) -->
+    <section class="card lg:col-span-3">
+      <div class="flex items-baseline justify-between">
+        <h2 id="model-title" class="text-lg font-semibold text-cyan-300">Shape Model</h2>
+        <span id="model-caption" class="text-xs text-slate-500"></span>
+      </div>
+      <div id="cube-canvas" class="mt-4 h-72 w-full overflow-hidden rounded-xl bg-slate-950/60 md:h-96"></div>
+      <p class="mt-3 text-center text-xs text-slate-500">
+        Drag: rotate 360° &nbsp;·&nbsp; Scroll: zoom &nbsp;·&nbsp; Right-drag: pan
+      </p>
+    </section>
+  </main>
+
+  <footer class="px-4 pb-10 text-center text-xs text-slate-600">
+    KOWAN Lab 8 · AWS Lambda + Dokku · luas-persegi → luas-permukaan-kubus
+  </footer>
+
+  <script>
+    /* ================= Configuration: Lambda Function URLs ================= */
+    const CONFIG = {
+      luasPersegiUrl: "https://grjbz77jouyog3qz2phwdzxtw40ypawu.lambda-url.us-east-1.on.aws/",
+      luasKubusUrl: "" // TODO
+    };
+
+    /* ============================= Helpers ============================= */
+    const escapeHtml = (s) =>
+      String(s).replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+      );
+
+    const toUnit = (s) => String(s).replace("^2", "²").replace("^3", "³");
+    const isConfigured = (url) => url && !url.includes("XXXX");
+
+    async function callLambda(url, payload) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    }
+
+    function showResult(menu, html, isError = false) {
+      const el = document.getElementById(`result-${menu}`);
+      el.innerHTML = html;
+      el.classList.remove("result-ok", "result-err", "hidden");
+      el.classList.add(isError ? "result-err" : "result-ok");
+    }
+
+    function setBusy(menu, busy) {
+      const btn = document.getElementById(`btn-${menu}`);
+      const spin = document.getElementById(`spin-${menu}`);
+      const label = document.getElementById(`label-${menu}`);
+      btn.disabled = busy;
+      spin.classList.toggle("hidden", !busy);
+      spin.classList.toggle("inline-block", busy);
+      label.textContent = busy ? "Calculating…" : label.dataset.idle;
+    }
+
+    /* ========================== Menu switching ========================== */
+    function switchMenu(menu) {
+      document.getElementById("panel-square").classList.toggle("hidden", menu !== "square");
+      document.getElementById("panel-cube").classList.toggle("hidden", menu !== "cube");
+
+      ["square", "cube"].forEach((m) => {
+        const tab = document.getElementById(`tab-${m}`);
+        const active = m === menu;
+        tab.classList.toggle("border-cyan-400", active);
+        tab.classList.toggle("bg-cyan-500/20", active);
+        tab.classList.toggle("text-cyan-200", active);
+        tab.classList.toggle("border-slate-700", !active);
+        tab.classList.toggle("text-slate-400", !active);
+      });
+
+      applyModelView(menu);
+    }
+
+    /* ================ Menu 1: Square Area (luas-persegi) ================ */
+    async function handleSquare(event) {
+      event.preventDefault();
+      const sisi = Number(document.getElementById("sisi").value);
+      if (!Number.isFinite(sisi) || sisi < 0)
+        return showResult("square", "Side length must be a number ≥ 0.", true);
+      if (!isConfigured(CONFIG.luasPersegiUrl))
+        return showResult("square", "Set CONFIG.luasPersegiUrl in index.html first.", true);
+
+      setBusy("square", true);
+      try {
+        const data = await callLambda(CONFIG.luasPersegiUrl, { sisi });
+        showResult("square", `L = ${sisi} × ${sisi} = ${data.luas_persegi} ${toUnit(data.satuan)}`);
+      } catch (err) {
+        showResult("square", `Failed to call luas-persegi: ${escapeHtml(err.message)}`, true);
+      } finally {
+        setBusy("square", false);
+      }
+    }
+
+    /* ========== Menu 2: Cube Surface Area (luas-permukaan-kubus) ========== */
+    async function handleCube(event) {
+      event.preventDefault();
+      const rusuk = Number(document.getElementById("rusuk").value);
+      if (!Number.isFinite(rusuk) || rusuk < 0)
+        return showResult("cube", "Edge length must be a number ≥ 0.", true);
+      if (!isConfigured(CONFIG.luasKubusUrl))
+        return showResult("cube", "luas-permukaan-kubus URL is not configured yet (CONFIG.luasKubusUrl).", true);
+
+      setBusy("cube", true);
+      try {
+        const data = await callLambda(CONFIG.luasKubusUrl, { rusuk });
+        showResult("cube",
+          `LP = 6 × ${data.luas_sisi} = ${data.luas_permukaan} ${toUnit(data.satuan)}<br>` +
+          `<span class="text-xs">luas satu sisi dihitung oleh luas-persegi (HTTP chain)</span>`);
+      } catch (err) {
+        showResult("cube", `Failed to call luas-permukaan-kubus: ${escapeHtml(err.message)}`, true);
+      } finally {
+        setBusy("cube", false);
+      }
+    }
+
+    /* ======== Three.js: 2D square (Tab 1) / 3D cube (Tab 2) ======== */
+    const MODEL_VIEWS = {
+      square: { camera: [0, 0.15, 3.6] },
+      cube:   { camera: [2.6, 2.2, 4] }
+    };
+
+    let currentMenu = "square";
+    let modelState = null; // { scene, camera, controls, square, cube }
+
+    // Grid/wireframe texture drawn on the shapes themselves:
+    // 1 cell = 1 cm on a square face → each cell = 1 cm².
+    function makeGridTexture() {
+      const SIZE = 512, CELLS = 8, step = SIZE / CELLS;
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = SIZE;
+      const ctx = canvas.getContext("2d");
+
+      ctx.fillStyle = "rgba(8, 47, 73, 0.85)";
+      ctx.fillRect(0, 0, SIZE, SIZE);
+
+      ctx.strokeStyle = "rgba(34, 211, 238, 0.55)";
+      ctx.lineWidth = 2;
+      for (let i = 0; i <= CELLS; i++) {
+        ctx.beginPath(); ctx.moveTo(i * step, 0); ctx.lineTo(i * step, SIZE); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i * step); ctx.lineTo(SIZE, i * step); ctx.stroke();
+      }
+
+      ctx.strokeStyle = "rgba(34, 211, 238, 0.95)";
+      ctx.lineWidth = 5;
+      ctx.strokeRect(2, 2, SIZE - 4, SIZE - 4);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
+      return texture;
+    }
+
+    function initModelViewer() {
+      const container = document.getElementById("cube-canvas");
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      container.appendChild(renderer.domElement);
+
+      const gridTexture = makeGridTexture();
+      gridTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+      // Tab 1 model: flat 2D square (its cells = cm²)
+      const squareMaterial = new THREE.MeshStandardMaterial({
+        map: gridTexture, side: THREE.DoubleSide, roughness: 0.55, metalness: 0.05
+      });
+      const square = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), squareMaterial);
+      square.add(new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.PlaneGeometry(2.4, 2.4)),
+        new THREE.LineBasicMaterial({ color: 0x22d3ee })
+      ));
+      scene.add(square);
+
+      // Tab 2 model: 3D cube (6 faces of cm² cells)
+      const cubeMaterial = new THREE.MeshStandardMaterial({
+        map: gridTexture, roughness: 0.55, metalness: 0.05
+      });
+      const cube = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.6), cubeMaterial);
+      cube.add(new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(1.6, 1.6, 1.6)),
+        new THREE.LineBasicMaterial({ color: 0x22d3ee })
+      ));
+      scene.add(cube);
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      const light = new THREE.DirectionalLight(0xffffff, 1.5);
+      light.position.set(3, 6, 4);
+      scene.add(light);
+
+      // Shared controls: drag = smooth 360° rotation on both models
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.autoRotateSpeed = 1.5;
+      controls.minDistance = 2.5;
+      controls.maxDistance = 8;
+
+      let resumeTimer = null;
+      controls.addEventListener("start", () => {
+        controls.autoRotate = false;
+        clearTimeout(resumeTimer);
+      });
+      controls.addEventListener("end", () => {
+        resumeTimer = setTimeout(() => { controls.autoRotate = currentMenu === "cube"; }, 3000);
+      });
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      window.addEventListener("resize", () => {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      });
+
+      modelState = { scene, camera, controls, square, cube };
+    }
+
+    function applyModelView(menu) {
+      currentMenu = menu;
+      if (!modelState) return;
+
+      const { camera, controls, square, cube } = modelState;
+      const view = MODEL_VIEWS[menu];
+
+      square.visible = menu === "square";
+      cube.visible = menu === "cube";
+      controls.autoRotate = menu === "cube";
+
+      camera.position.set(...view.camera);
+      controls.target.set(0, 0, 0);
+      controls.update();
+
+      document.getElementById("model-title").textContent =
+        menu === "square" ? "2D Square Model" : "3D Cube Model";
+      document.getElementById("model-caption").textContent =
+        menu === "square"
+          ? "1 cell = 1 cm · L = sisi × sisi (cm²)"
+          : "1 cell = 1 cm per face · LP = 6 × sisi² (cm²)";
+    }
+
+    /* ============================== Boot ============================== */
+    switchMenu("square");
+    try {
+      initModelViewer();
+      applyModelView("square");
+    } catch (err) {
+      document.getElementById("cube-canvas").innerHTML =
+        '<p class="p-6 text-center text-slate-500">3D canvas is not supported in this browser.</p>';
+    }
+  </script>
+</body>
+</html>
