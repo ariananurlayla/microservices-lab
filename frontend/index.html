@@ -88,7 +88,7 @@
         <h2 id="model-title" class="text-lg font-semibold text-cyan-300">Shape Model</h2>
         <span id="model-caption" class="text-xs text-slate-500"></span>
       </div>
-      <div id="cube-canvas" class="mt-4 h-72 w-full overflow-hidden rounded-xl bg-slate-950/60 md:h-96"></div>
+      <div id="cube-canvas" class="mx-auto mt-4 aspect-square w-full max-w-[26rem] overflow-hidden rounded-xl bg-slate-950/60"></div>
       <p class="mt-3 text-center text-xs text-slate-500">
         Drag: rotate 360° &nbsp;·&nbsp; Scroll: zoom &nbsp;·&nbsp; Right-drag: pan
       </p>
@@ -214,8 +214,8 @@
 
     // Grid/wireframe texture drawn on the shapes themselves:
     // 1 cell = 1 cm on a square face → each cell = 1 cm².
-    function makeGridTexture() {
-      const SIZE = 512, CELLS = 8, step = SIZE / CELLS;
+    function makeGridTexture(cells = 8) {
+      const SIZE = 512, step = SIZE / cells;
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = SIZE;
       const ctx = canvas.getContext("2d");
@@ -225,7 +225,7 @@
 
       ctx.strokeStyle = "rgba(34, 211, 238, 0.55)";
       ctx.lineWidth = 2;
-      for (let i = 0; i <= CELLS; i++) {
+      for (let i = 0; i <= cells; i++) {
         ctx.beginPath(); ctx.moveTo(i * step, 0); ctx.lineTo(i * step, SIZE); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(0, i * step); ctx.lineTo(SIZE, i * step); ctx.stroke();
       }
@@ -249,12 +249,11 @@
       renderer.setSize(container.clientWidth, container.clientHeight);
       container.appendChild(renderer.domElement);
 
-      const gridTexture = makeGridTexture();
-      gridTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-
-      // Tab 1 model: flat 2D square (its cells = cm²)
+      // Tab 1 model: flat 2D square — its texture is regenerated per sisi input
+      const squareTexture = makeGridTexture(8);
+      squareTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
       const squareMaterial = new THREE.MeshStandardMaterial({
-        map: gridTexture, side: THREE.DoubleSide, roughness: 0.55, metalness: 0.05
+        map: squareTexture, side: THREE.DoubleSide, roughness: 0.55, metalness: 0.05
       });
       const square = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), squareMaterial);
       square.add(new THREE.LineSegments(
@@ -264,8 +263,10 @@
       scene.add(square);
 
       // Tab 2 model: 3D cube (6 faces of cm² cells)
+      const cubeTexture = makeGridTexture(8);
+      cubeTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
       const cubeMaterial = new THREE.MeshStandardMaterial({
-        map: gridTexture, roughness: 0.55, metalness: 0.05
+        map: cubeTexture, roughness: 0.55, metalness: 0.05
       });
       const cube = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 1.6), cubeMaterial);
       cube.add(new THREE.LineSegments(
@@ -309,7 +310,7 @@
         renderer.setSize(container.clientWidth, container.clientHeight);
       });
 
-      modelState = { scene, camera, controls, square, cube };
+      modelState = { scene, camera, controls, square, cube, squareGridCells: 8 };
     }
 
     function applyModelView(menu) {
@@ -329,14 +330,47 @@
 
       document.getElementById("model-title").textContent =
         menu === "square" ? "2D Square Model" : "3D Cube Model";
+
+      if (menu === "square") {
+        updateSquareGrid(document.getElementById("sisi").value);
+      } else {
+        document.getElementById("model-caption").textContent =
+          "1 cell = 1 cm per face · LP = 6 × sisi² (cm²)";
+      }
+    }
+
+    // Regenerate the square's grid texture to match the sisi input.
+    // Cells are redrawn inside the fixed-size texture, so N × N cells always
+    // fit the fixed square container without overflowing (cells simply shrink).
+    // Above the soft cap the grid is sampled at MAX_VISUAL_CELLS to keep the
+    // lines crisp instead of drawing thousands of sub-pixel strokes.
+    const MAX_VISUAL_CELLS = 30;
+
+    function updateSquareGrid(rawValue) {
+      if (!modelState) return;
+      const sisi = Number(rawValue);
+      if (!Number.isFinite(sisi) || sisi < 1) return;
+
+      const cells = Math.max(1, Math.min(Math.round(sisi), MAX_VISUAL_CELLS));
+      const material = modelState.square.material;
+      const oldTexture = material.map;
+      material.map = makeGridTexture(cells);
+      material.needsUpdate = true;
+      if (oldTexture) oldTexture.dispose();
+      modelState.squareGridCells = cells;
+
+      const actual = Math.round(sisi);
+      const sampled = actual > MAX_VISUAL_CELLS;
       document.getElementById("model-caption").textContent =
-        menu === "square"
-          ? "1 cell = 1 cm · L = sisi × sisi (cm²)"
-          : "1 cell = 1 cm per face · LP = 6 × sisi² (cm²)";
+        `sisi = ${sisi} cm · ${cells} × ${cells} grid · 1 cell = 1 cm` +
+        (sampled ? ` (sampled — actual ${actual} × ${actual})` : "");
     }
 
     /* ============================== Boot ============================== */
     switchMenu("square");
+    document.getElementById("sisi").addEventListener("input", (event) => {
+      updateSquareGrid(event.target.value);
+    });
     try {
       initModelViewer();
       applyModelView("square");
