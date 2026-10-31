@@ -310,7 +310,7 @@
         renderer.setSize(container.clientWidth, container.clientHeight);
       });
 
-      modelState = { scene, camera, controls, square, cube, squareGridCells: 8 };
+      modelState = { scene, camera, controls, square, cube, squareGridCells: 8, cubeGridCells: 8 };
     }
 
     function applyModelView(menu) {
@@ -334,17 +334,23 @@
       if (menu === "square") {
         updateSquareGrid(document.getElementById("sisi").value);
       } else {
-        document.getElementById("model-caption").textContent =
-          "1 cell = 1 cm per face · LP = 6 × sisi² (cm²)";
+        updateCubeGrid(document.getElementById("rusuk").value);
       }
     }
 
-    // Regenerate the square's grid texture to match the sisi input.
+    // Regenerate a model's grid texture to match the side-length input.
     // Cells are redrawn inside the fixed-size texture, so N × N cells always
-    // fit the fixed square container without overflowing (cells simply shrink).
-    // Above the soft cap the grid is sampled at MAX_VISUAL_CELLS to keep the
-    // lines crisp instead of drawing thousands of sub-pixel strokes.
+    // fit the fixed canvas container without overflowing (cells simply
+    // shrink). Above the soft cap the grid is sampled at MAX_VISUAL_CELLS to
+    // keep the lines crisp instead of drawing thousands of sub-pixel strokes.
     const MAX_VISUAL_CELLS = 30;
+
+    function applyGridTexture(material, cells) {
+      const oldTexture = material.map;
+      material.map = makeGridTexture(cells);
+      material.needsUpdate = true;
+      if (oldTexture) oldTexture.dispose();
+    }
 
     function updateSquareGrid(rawValue) {
       if (!modelState) return;
@@ -352,17 +358,31 @@
       if (!Number.isFinite(sisi) || sisi < 1) return;
 
       const cells = Math.max(1, Math.min(Math.round(sisi), MAX_VISUAL_CELLS));
-      const material = modelState.square.material;
-      const oldTexture = material.map;
-      material.map = makeGridTexture(cells);
-      material.needsUpdate = true;
-      if (oldTexture) oldTexture.dispose();
+      applyGridTexture(modelState.square.material, cells);
       modelState.squareGridCells = cells;
 
+      if (currentMenu !== "square") return;
       const actual = Math.round(sisi);
       const sampled = actual > MAX_VISUAL_CELLS;
       document.getElementById("model-caption").textContent =
         `sisi = ${sisi} cm · ${cells} × ${cells} grid · 1 cell = 1 cm` +
+        (sampled ? ` (sampled — actual ${actual} × ${actual})` : "");
+    }
+
+    function updateCubeGrid(rawValue) {
+      if (!modelState) return;
+      const rusuk = Number(rawValue);
+      if (!Number.isFinite(rusuk) || rusuk < 1) return;
+
+      const cells = Math.max(1, Math.min(Math.round(rusuk), MAX_VISUAL_CELLS));
+      applyGridTexture(modelState.cube.material, cells);
+      modelState.cubeGridCells = cells;
+
+      if (currentMenu !== "cube") return;
+      const actual = Math.round(rusuk);
+      const sampled = actual > MAX_VISUAL_CELLS;
+      document.getElementById("model-caption").textContent =
+        `rusuk = ${rusuk} cm · ${cells} × ${cells} grid per face · 1 cell = 1 cm` +
         (sampled ? ` (sampled — actual ${actual} × ${actual})` : "");
     }
 
@@ -371,8 +391,12 @@
     document.getElementById("sisi").addEventListener("input", (event) => {
       updateSquareGrid(event.target.value);
     });
+    document.getElementById("rusuk").addEventListener("input", (event) => {
+      updateCubeGrid(event.target.value);
+    });
     try {
       initModelViewer();
+      updateCubeGrid(document.getElementById("rusuk").value);
       applyModelView("square");
     } catch (err) {
       document.getElementById("cube-canvas").innerHTML =
